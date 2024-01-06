@@ -43,7 +43,7 @@ def copy_file(src_num: int, dst_num: int):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: {} <src_num> <dst_num>".format(sys.argv[0]))
+        print(f"Usage: {sys.argv[0]} <src_num> <dst_num>")
         sys.exit(1)
 
     src_num = int(sys.argv[1])

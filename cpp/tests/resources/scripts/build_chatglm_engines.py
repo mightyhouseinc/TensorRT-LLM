@@ -54,8 +54,7 @@ def build_engine(weight_dir: _pl.Path, engine_dir: _pl.Path, world_size, *args):
 def run_command(command: _tp.Sequence[str], *, cwd=None, **kwargs) -> None:
 
     command = [str(i) for i in command]
-    print(f"Running: cd %s && %s" %
-          (str(cwd or _pl.Path.cwd()), " ".join(command)))
+    print(f'Running: cd {str(cwd or _pl.Path.cwd())} && {" ".join(command)}')
     _sp.check_call(command, cwd=cwd, **kwargs)
 
 
@@ -64,14 +63,14 @@ def build_engines(model_cache: _tp.Optional[str] = None, world_size: int = 1):
     model_name_list = ["chatglm_6b", "chatglm2_6b", "chatglm3_6b"]
     hf_dir_list = [resources_dir / model_name for model_name in model_name_list]
     trt_dir_list = [
-        resources_dir / ("output_" + model_name)
+        resources_dir / f"output_{model_name}"
         for model_name in model_name_list
     ]
 
     run_command(
-        ["pip", "install", "-r",
-         str(resources_dir) + "/requirements.txt"],
-        cwd=resources_dir)
+        ["pip", "install", "-r", f"{str(resources_dir)}/requirements.txt"],
+        cwd=resources_dir,
+    )
 
     # chatglm needs 4.33.1 in case of tokenizer issues
     # AttributeError: 'ChatGLMTokenizer' object has no attribute 'sp_tokenizer'. Did you mean: '_tokenize'?
@@ -95,15 +94,16 @@ def build_engines(model_cache: _tp.Optional[str] = None, world_size: int = 1):
     print("\nBuilding engines")
     for model_name, hf_dir, trt_dir in zip(model_name_list, hf_dir_list,
                                            trt_dir_list):
-        print("Building %s" % model_name)
+        print(f"Building {model_name}")
         build_engine(hf_dir, trt_dir, world_size)
 
     if not _Path(engine_target_path).exists():
         _Path(engine_target_path).mkdir(parents=True, exist_ok=True)
     for model_name in model_name_list:
         _shutil.move(
-            _Path(resources_dir) / ("output_" + model_name),
-            engine_target_path / model_name)
+            _Path(resources_dir) / f"output_{model_name}",
+            engine_target_path / model_name,
+        )
 
     print("Done.")
 

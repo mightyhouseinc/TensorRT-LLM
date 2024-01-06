@@ -498,20 +498,19 @@ if __name__ == "__main__":
         exit()
 
     test_remove_padding = True
-    if not test_remove_padding:
-        if 't5' in args.model_name:
-            input_text = "translate English to German: The house is wonderful, radiating timeless charm and offering a warm, inviting interior with beautiful details and a serene backyard."
-        elif 'bart' in args.model_name:
-            input_text = "The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York City was finished in 1930. It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."
-        else:
-            raise RuntimeError('Unsupported model type!')
-
-    else:
+    if test_remove_padding:
         input_text = [
             "translate English to German: The house is wonderful.",
             "summarize: I am a high-performance inference optimizer and runtime.",
             "During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world",
         ]
+
+    elif 't5' in args.model_name:
+        input_text = "translate English to German: The house is wonderful, radiating timeless charm and offering a warm, inviting interior with beautiful details and a serene backyard."
+    elif 'bart' in args.model_name:
+        input_text = "The tower is 324 metres (1,063 ft) tall, about the same height as an 81-storey building, and the tallest structure in Paris. Its base is square, measuring 125 metres (410 ft) on each side. During its construction, the Eiffel Tower surpassed the Washington Monument to become the tallest man-made structure in the world, a title it held for 41 years until the Chrysler Building in New York City was finished in 1930. It was the first structure to reach a height of 300 metres. Due to the addition of a broadcasting aerial at the top of the tower in 1957, it is now taller than the Chrysler Building by 5.2 metres (17 ft). Excluding transmitters, the Eiffel Tower is the second tallest free-standing structure in France after the Millau Viaduct."
+    else:
+        raise RuntimeError('Unsupported model type!')
 
     tokenizer = AutoTokenizer.from_pretrained(
         args.model_name)  # TODO: use model path instead
@@ -539,9 +538,8 @@ if __name__ == "__main__":
                                          ]).to('cuda')
     decoder_input_ids = decoder_input_ids.repeat((input_ids.shape[0], 1))
 
-    # simple comparison with HF on FP32
-    if args.compare_hf_fp32:
-        if tensorrt_llm.mpi_rank() == 0:
+    if tensorrt_llm.mpi_rank() == 0:
+        if args.compare_hf_fp32:
             hf_model = AutoModelForSeq2SeqLM.from_pretrained(
                 args.model_name,  # TODO: use model path instead
                 # torch_dtype=torch.float16 if '16' in dtype else torch.float32,  # TODO: use matched torch dtype

@@ -146,8 +146,7 @@ def parse_t5_config(config, component, args):
 
 
 def fuse_qkv(q, k, v):
-    qkv_weight = np.concatenate((q, k, v))
-    return qkv_weight
+    return np.concatenate((q, k, v))
 
 
 def load_from_hf_t5(tllm_model, pytorch_ckpt_path, component, dtype="float32"):
@@ -172,9 +171,11 @@ def load_from_hf_t5(tllm_model, pytorch_ckpt_path, component, dtype="float32"):
         # all layers use 1st layer's attn table
         # transpose from [num_buckets, num_heads] -> [num_heads, num_buckets]
         # ascontiguousarray is very important! otherwise TRT always receives the original layout
-        relative_attention_table = np.ascontiguousarray(pytorch_model[
-            f'encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight']
-                                                        .T)
+        relative_attention_table = np.ascontiguousarray(
+            pytorch_model[
+                'encoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight'
+            ].T
+        )
 
         for i in range(tllm_model.num_layers):
             layer = tllm_model.encoder_layers[i]
@@ -244,9 +245,11 @@ def load_from_hf_t5(tllm_model, pytorch_ckpt_path, component, dtype="float32"):
         # all layers use 1st layer's attn table
         # transpose from [num_buckets, num_heads] --> [num_heads, num_buckets]
         # ascontiguousarray is very important! otherwise TRT always receives the original layout
-        relative_attention_table = np.ascontiguousarray(pytorch_model[
-            f'decoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight']
-                                                        .T)
+        relative_attention_table = np.ascontiguousarray(
+            pytorch_model[
+                'decoder.block.0.layer.0.SelfAttention.relative_attention_bias.weight'
+            ].T
+        )
 
         for i in range(tllm_model.num_layers):
             layer = tllm_model.decoder_layers[i]

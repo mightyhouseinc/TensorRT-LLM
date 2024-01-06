@@ -39,7 +39,7 @@ MODEL_NAME = "gpt"
 
 
 def get_engine_name(model, dtype, tp_size, rank):
-    return '{}_{}_tp{}_rank{}.engine'.format(model, dtype, tp_size, rank)
+    return f'{model}_{dtype}_tp{tp_size}_rank{rank}.engine'
 
 
 def find_engines(dir: Path,
@@ -62,25 +62,26 @@ def serialize_engine(engine, path):
 
 
 def override_args_from_model_dir(args: argparse.Namespace) -> None:
-    if args.model_dir is not None:
-        logger.info(f"Setting model configuration from {args.model_dir}.")
-        parsed_params = parse_ft_config(Path(args.model_dir) / "config.ini")
-        args.n_embd = parsed_params["n_embd"]
-        args.n_head = parsed_params["n_head"]
-        args.n_layer = parsed_params["n_layer"]
-        args.n_positions = parsed_params["n_positions"]
-        args.vocab_size = parsed_params["vocab_size"]
-        args.hidden_act = parsed_params["hidden_act"]
-        if parsed_params["rotary_pct"] is not None:
-            args.rotary_pct = parsed_params["rotary_pct"]
-        if parsed_params["rotary_base"] is not None:
-            args.rotary_base = parsed_params["rotary_base"]
-        if parsed_params["rotary_scaling"] is not None:
-            args.rotary_scaling = parsed_params["rotary_scaling"]
-        args.bias = parsed_params["bias"]
-        args.dtype = parsed_params["dtype"]
-        args.inter_size = parsed_params["inter_size"]
-        args.multi_query_mode = parsed_params["multi_query_mode"]
+    if args.model_dir is None:
+        return
+    logger.info(f"Setting model configuration from {args.model_dir}.")
+    parsed_params = parse_ft_config(Path(args.model_dir) / "config.ini")
+    args.n_embd = parsed_params["n_embd"]
+    args.n_head = parsed_params["n_head"]
+    args.n_layer = parsed_params["n_layer"]
+    args.n_positions = parsed_params["n_positions"]
+    args.vocab_size = parsed_params["vocab_size"]
+    args.hidden_act = parsed_params["hidden_act"]
+    if parsed_params["rotary_pct"] is not None:
+        args.rotary_pct = parsed_params["rotary_pct"]
+    if parsed_params["rotary_base"] is not None:
+        args.rotary_base = parsed_params["rotary_base"]
+    if parsed_params["rotary_scaling"] is not None:
+        args.rotary_scaling = parsed_params["rotary_scaling"]
+    args.bias = parsed_params["bias"]
+    args.dtype = parsed_params["dtype"]
+    args.inter_size = parsed_params["inter_size"]
+    args.multi_query_mode = parsed_params["multi_query_mode"]
 
 
 def parse_arguments(args):
@@ -407,7 +408,7 @@ def parse_arguments(args):
     if not args.remove_input_padding:
         if args.use_gpt_attention_plugin:
             logger.warning(
-                f"It is recommended to specify --remove_input_padding when using GPT attention plugin"
+                "It is recommended to specify --remove_input_padding when using GPT attention plugin"
             )
 
     args.bias = not args.no_bias
@@ -512,12 +513,11 @@ def build_rank_engine(builder: Builder,
         if args.world_size > 1:
             if args.model_dir is not None and args.embedding_sharding_dim == 0 and args.use_parallel_embedding:
                 share_embedding_table = check_embedding_share(args.model_dir)
-        else:
-            if args.model_dir is not None:
-                share_embedding_table = check_embedding_share(args.model_dir)
+        elif args.model_dir is not None:
+            share_embedding_table = check_embedding_share(args.model_dir)
 
         if not share_embedding_table:
-            logger.warning(f'Cannot share the embedding lookup table.')
+            logger.warning('Cannot share the embedding lookup table.')
 
     if share_embedding_table:
         logger.info(
@@ -588,15 +588,15 @@ def build_rank_engine(builder: Builder,
         network.plugin_config.set_gpt_attention_plugin(
             dtype=args.use_gpt_attention_plugin)
     if args.use_gemm_plugin:
-        if not args.enable_fp8:
-            network.plugin_config.set_gemm_plugin(dtype=args.use_gemm_plugin)
-        else:
+        if args.enable_fp8:
             logger.info(
                 "Gemm plugin does not support FP8. Disabled Gemm plugin.")
+        else:
+            network.plugin_config.set_gemm_plugin(dtype=args.use_gemm_plugin)
     if args.use_layernorm_plugin:
         network.plugin_config.set_layernorm_plugin(
             dtype=args.use_layernorm_plugin)
-    assert not (args.enable_context_fmha and args.enable_context_fmha_fp32_acc)
+    assert not args.enable_context_fmha or not args.enable_context_fmha_fp32_acc
     if args.enable_context_fmha:
         network.plugin_config.set_context_fmha(ContextFMHAType.enabled)
     if args.enable_context_fmha_fp32_acc:
@@ -637,7 +637,7 @@ def build_rank_engine(builder: Builder,
 
     if args.use_context_fmha_for_generation:
         logger.warning(
-            f'use_context_fmha_for_generation is set. This flag must be used only for testing'
+            'use_context_fmha_for_generation is set. This flag must be used only for testing'
         )
         assert args.use_gpt_attention_plugin and args.paged_kv_cache and args.use_paged_context_fmha, "use_context_fmha_for_generation must be used with paged KV cache and attention."
         network.plugin_config.set_context_fmha_for_generation()

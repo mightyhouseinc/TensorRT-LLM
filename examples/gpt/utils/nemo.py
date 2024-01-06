@@ -107,7 +107,7 @@ def copy_tokenizer_files(config, out_dir):
         "merge_file": "merges",
     }
 
-    for key in basenames.keys():
+    for key in basenames:
         if config[key] is None:
             continue
         path = Path(config[key])
@@ -215,35 +215,33 @@ def add_special_tokens_to_tokenizer(tokenizer):
         tokenizer.add_special_tokens({'mask_token': '<mask>'})
 
     # bos, eos, pad and unk may be present in the provided spm .model file, if they are, use it.
-    if not hasattr(tokenizer, 'pad_token'):
-        if hasattr(tokenizer.tokenizer,
-                   'pad_id') and tokenizer.tokenizer.pad_id() > 0:
-            tokenizer.pad_token = tokenizer.tokenizer.id_to_piece(
-                tokenizer.tokenizer.pad_id())
-        else:
-            tokenizer.add_special_tokens({'pad_token': '<pad>'})
-    else:
+    if hasattr(tokenizer, 'pad_token'):
         tokenizer.add_special_tokens({'pad_token': '<pad>'})
 
-    if not hasattr(tokenizer, 'bos_token'):
-        if hasattr(tokenizer.tokenizer,
-                   'bos_id') and tokenizer.tokenizer.bos_id() > 0:
-            tokenizer.bos_token = tokenizer.tokenizer.id_to_piece(
-                tokenizer.tokenizer.bos_id())
-        else:
-            tokenizer.add_special_tokens({'bos_token': '<bos>'})
+    elif hasattr(tokenizer.tokenizer,
+                   'pad_id') and tokenizer.tokenizer.pad_id() > 0:
+        tokenizer.pad_token = tokenizer.tokenizer.id_to_piece(
+            tokenizer.tokenizer.pad_id())
     else:
+        tokenizer.add_special_tokens({'pad_token': '<pad>'})
+    if hasattr(tokenizer, 'bos_token'):
         tokenizer.add_special_tokens({'bos_token': '<s>'})
 
-    if not hasattr(tokenizer, 'eos_token'):
-        if hasattr(tokenizer.tokenizer,
-                   'eos_id') and tokenizer.tokenizer.eos_id() > 0:
-            tokenizer.eos_token = tokenizer.tokenizer.id_to_piece(
-                tokenizer.tokenizer.eos_id())
-        else:
-            tokenizer.add_special_tokens({'eos_token': '<eos>'})
+    elif hasattr(tokenizer.tokenizer,
+                   'bos_id') and tokenizer.tokenizer.bos_id() > 0:
+        tokenizer.bos_token = tokenizer.tokenizer.id_to_piece(
+            tokenizer.tokenizer.bos_id())
     else:
+        tokenizer.add_special_tokens({'bos_token': '<bos>'})
+    if hasattr(tokenizer, 'eos_token'):
         tokenizer.add_special_tokens({'eos_token': '</s>'})
+
+    elif hasattr(tokenizer.tokenizer,
+                   'eos_id') and tokenizer.tokenizer.eos_id() > 0:
+        tokenizer.eos_token = tokenizer.tokenizer.id_to_piece(
+            tokenizer.tokenizer.eos_id())
+    else:
+        tokenizer.add_special_tokens({'eos_token': '<eos>'})
 
 
 def unpack_nemo_ckpt(nemo_archive_path: Union[str, Path],
@@ -309,9 +307,9 @@ class UnpackedNemoCheckpointDir:
         model_config = None
 
         model_config_filename = "model_config.yaml"
-        model_configs_paths = list(
-            self._checkpoints_dir.rglob(model_config_filename))
-        if model_configs_paths:
+        if model_configs_paths := list(
+            self._checkpoints_dir.rglob(model_config_filename)
+        ):
             if len(model_configs_paths) > 1:
                 raise RuntimeError(
                     f"There are more than single {model_config_filename} "
@@ -326,9 +324,9 @@ class UnpackedNemoCheckpointDir:
             LOGGER.debug("Searching model config in checkpoints")
             # try to obtain from checkpoint
             checkpoint_name = self.checkpoint_name
-            checkpoints_paths = sorted(
-                self._checkpoints_dir.rglob(checkpoint_name))
-            if checkpoints_paths:
+            if checkpoints_paths := sorted(
+                self._checkpoints_dir.rglob(checkpoint_name)
+            ):
                 # assume that parallel ranks 0 checkpoint should have model config embedded
                 checkpoint_path = checkpoints_paths[0]
 
@@ -398,8 +396,7 @@ class UnpackedNemoCheckpointDir:
             "*last.ckpt",  # newer format of checkpoints
         ]
         for pattern in patterns:
-            model_files = sorted(list(self._checkpoints_dir.rglob(pattern)))
-            if model_files:
+            if model_files := sorted(list(self._checkpoints_dir.rglob(pattern))):
                 return model_files[0].name
 
         raise ValueError(
@@ -436,8 +433,7 @@ class UnpackedNemoCheckpointDir:
 
         file_path = None
         if filename_pattern is not None:
-            files_paths = list(self._checkpoints_dir.glob(filename_pattern))
-            if files_paths:
+            if files_paths := list(self._checkpoints_dir.glob(filename_pattern)):
                 assert len(files_paths) == 1
                 file_path = files_paths[0]
 

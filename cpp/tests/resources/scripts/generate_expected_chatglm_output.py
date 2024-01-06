@@ -39,8 +39,7 @@ resources_dir = Path(
 def run_command(command: _tp.Sequence[str], *, cwd=None, **kwargs) -> None:
 
     command = [str(i) for i in command]
-    print(f"Running: cd %s && %s" %
-          (str(cwd or _pl.Path.cwd()), " ".join(command)))
+    print(f'Running: cd {str(cwd or _pl.Path.cwd())} && {" ".join(command)}')
     _sp.check_call(command, cwd=cwd, **kwargs)
 
 

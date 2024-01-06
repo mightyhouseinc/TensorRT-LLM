@@ -117,7 +117,7 @@ def smooth_gpt_model(model, scales, alpha):
             continue
 
         # qkv_proj
-        layer_name = name + ".attn.c_attn"
+        layer_name = f"{name}.attn.c_attn"
         smoother = smooth_gemm(module.attn.c_attn.weight.T,
                                scales[layer_name]["x"], module.ln_1.weight,
                                module.ln_1.bias, alpha)
@@ -125,7 +125,7 @@ def smooth_gpt_model(model, scales, alpha):
         scales[layer_name]["w"] = module.attn.c_attn.weight.abs().max(dim=0)[0]
 
         # fc1
-        layer_name = name + ".mlp.c_fc"
+        layer_name = f"{name}.mlp.c_fc"
         smoother = smooth_gemm(module.mlp.c_fc.weight.T,
                                scales[layer_name]["x"], module.ln_2.weight,
                                module.ln_2.bias, alpha)
@@ -142,7 +142,7 @@ def concat_qkv_weight_bias(q, hf_key, hf_model):
 # StarCoder uses nn.Linear for these following ops whose weight matrix is transposed compared to transformer.Conv1D
 def transpose_weights(hf_name, param):
     weight_to_transpose = ["c_attn", "c_proj", "c_fc"]
-    if any([k in hf_name for k in weight_to_transpose]):
+    if any(k in hf_name for k in weight_to_transpose):
         if len(param.shape) == 2:
             param = param.transpose(0, 1)
     return param
@@ -188,8 +188,7 @@ def gpt_to_ft_name(orig_name):
 @torch.no_grad()
 def hf_gpt_converter(args: ProgArgs):
     infer_tp = args.tensor_parallelism
-    multi_query_mode = True if args.model in ["santacoder", "starcoder"
-                                              ] else False
+    multi_query_mode = args.model in ["santacoder", "starcoder"]
     saved_dir = Path(args.out_dir) / f"{infer_tp}-gpu"
     saved_dir.mkdir(parents=True, exist_ok=True)
 
@@ -211,8 +210,8 @@ def hf_gpt_converter(args: ProgArgs):
                                cache_dir=args.dataset_cache_dir)
         act_range = capture_activation_range(
             model, AutoTokenizer.from_pretrained(args.in_file), dataset)
-        if args.smoothquant is not None:
-            smooth_gpt_model(model, act_range, args.smoothquant)
+    if args.smoothquant is not None:
+        smooth_gpt_model(model, act_range, args.smoothquant)
 
     config = configparser.ConfigParser()
     config["gpt"] = {}

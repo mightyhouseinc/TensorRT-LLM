@@ -34,7 +34,7 @@ def get_compute_cap():
 
 def get_csv_filename(model, dtype, tp_size, mode, **kwargs):
     sm = get_compute_cap()
-    if len(kwargs) == 0:
+    if not kwargs:
         kw_pairs = ""
     else:
         kw_pairs = "_" + "_".join([str(k) + str(v) for k, v in kwargs.items()])
@@ -42,7 +42,7 @@ def get_csv_filename(model, dtype, tp_size, mode, **kwargs):
 
 
 def get_engine_name(model, dtype, tp_size, rank):
-    return '{}_{}_tp{}_rank{}.engine'.format(model, dtype, tp_size, rank)
+    return f'{model}_{dtype}_tp{tp_size}_rank{rank}.engine'
 
 
 def serialize_engine(engine, path):
@@ -84,7 +84,7 @@ class BaseBenchmark(object):
             assert dtype == config_dtype, f"Engine dtype ({config_dtype}) != Runtime dtype ({dtype})"
             world_size = self.config['builder_config']['tensor_parallel']
             assert world_size == self.world_size, \
-                (f'Engine world size ({world_size}) != Runtime world size ({self.world_size})')
+                    (f'Engine world size ({world_size}) != Runtime world size ({self.world_size})')
             # Load config into self
             for key, value in self.config['builder_config'].items():
                 if key == "quant_mode":
@@ -98,7 +98,7 @@ class BaseBenchmark(object):
             for key, value in self.config['plugin_config'].items():
                 # Same effect as self.use_foo_plugin = config.json["foo_plugin"]
                 if "plugin" in key:
-                    key = "use_" + key
+                    key = f"use_{key}"
                 setattr(self, key, value)
 
         self.engine_name = get_engine_name(self.engine_model_name, self.dtype,
@@ -125,7 +125,7 @@ class BaseBenchmark(object):
         report_dict["world_size"] = self.world_size
         report_dict["precision"] = self.dtype
         report_dict["quantization"] = str(self.quant_mode)
-        report_dict["compute_cap"] = "sm" + get_compute_cap()
+        report_dict["compute_cap"] = f"sm{get_compute_cap()}"
         return report_dict
 
     def get_csv_filename(self):

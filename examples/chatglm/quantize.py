@@ -62,11 +62,7 @@ def get_calib_dataloader(data="cnn_dailymail",
                                   truncation=True,
                                   max_length=block_size).input_ids.cuda()
 
-    calib_dataloader = DataLoader(dataset_input_ids,
-                                  batch_size=batch_size,
-                                  shuffle=False)
-
-    return calib_dataloader
+    return DataLoader(dataset_input_ids, batch_size=batch_size, shuffle=False)
 
 
 def get_tokenizer(ckpt_path, **kwargs):

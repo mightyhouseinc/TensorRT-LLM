@@ -176,7 +176,7 @@ def capture_activation_range(model, tokenizer, num_samples=512, seq_len=512):
 
     hooks = []
     for name, m in model.named_modules():
-        if isinstance(m, nn.Linear) or isinstance(m, Conv1D):
+        if isinstance(m, (nn.Linear, Conv1D)):
             hooks.append(
                 m.register_forward_hook(
                     functools.partial(stat_input_hook, name=name)))
@@ -187,7 +187,7 @@ def capture_activation_range(model, tokenizer, num_samples=512, seq_len=512):
     for i in tqdm(range(num_samples), desc="calibrating model"):
         datapoint = dataset_cnn['train'][i:i + 1]
         line = copy.copy(datapoint['article'])
-        line[0] = line[0] + ' TL;DR: '
+        line[0] = f'{line[0]} TL;DR: '
         line[0] = line[0].strip()
         line[0] = line[0].replace(" n't", "n't")
         line_encoded = tokenizer(line,

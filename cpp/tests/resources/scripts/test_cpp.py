@@ -82,7 +82,7 @@ def build_trt_llm(python_exe: str,
 
     dist_dir = dist_dir if dist_dir.is_absolute() else root_dir / dist_dir
     wheels = _gl.glob(str(dist_dir / "tensorrt_llm-*.whl"))
-    assert len(wheels) > 0, "No wheels found"
+    assert wheels, "No wheels found"
     install_wheel = [python_exe, "-m", "pip", "install", "--upgrade", *wheels]
     run_command(install_wheel, cwd=root_dir)
 

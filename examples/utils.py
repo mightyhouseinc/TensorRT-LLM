@@ -77,9 +77,7 @@ def load_tokenizer(tokenizer_dir: Optional[str] = None,
                    model_name: str = 'gpt',
                    tokenizer_type: Optional[str] = None):
     if vocab_file is None:
-        use_fast = True
-        if tokenizer_type is not None and tokenizer_type == "llama":
-            use_fast = False
+        use_fast = tokenizer_type is None or tokenizer_type != "llama"
         # Should set both padding_side and truncation_side to be 'left'
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir,
                                                   legacy=False,
@@ -95,7 +93,10 @@ def load_tokenizer(tokenizer_dir: Optional[str] = None,
                                 padding_side='left',
                                 truncation_side='left')
 
-    if model_name == 'qwen':
+    if model_name == 'glm_10b':
+        pad_id = tokenizer.pad_token_id
+        end_id = tokenizer.eop_token_id
+    elif model_name == 'qwen':
         with open(Path(tokenizer_dir) / "generation_config.json") as f:
             gen_config = json.load(f)
         chat_format = gen_config['chat_format']
@@ -107,9 +108,6 @@ def load_tokenizer(tokenizer_dir: Optional[str] = None,
             end_id = tokenizer.im_end_id
         else:
             raise Exception(f"unknown chat format: {chat_format}")
-    elif model_name == 'glm_10b':
-        pad_id = tokenizer.pad_token_id
-        end_id = tokenizer.eop_token_id
     else:
         if tokenizer.pad_token_id is None:
             tokenizer.pad_token_id = tokenizer.eos_token_id

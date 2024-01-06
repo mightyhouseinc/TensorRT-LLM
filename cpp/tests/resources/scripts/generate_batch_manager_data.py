@@ -26,14 +26,14 @@ def generate_dataset(num_samples):
     input = ' '.join(['test' for _ in range(10)])
     output = ' '.join(['test' for _ in range(10)])
 
-    samples = []
-    for _ in range(num_samples):
-        samples.append({
+    samples = [
+        {
             "input": input,
             "instruction": "Summarize the following news article:",
-            "output": output
-        })
-
+            "output": output,
+        }
+        for _ in range(num_samples)
+    ]
     with open(dummy_cnn_dataset, 'w') as f:
         json.dump(samples, f)
 

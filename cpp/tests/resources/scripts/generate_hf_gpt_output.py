@@ -32,12 +32,14 @@ def generate_hf_output(data_type: str,
     input_file = data_dir / 'input_tokens.npy'
     output_dir = data_dir / model / 'huggingface'
 
-    run_hf.generate(model_dir=str(model_dir),
-                    data_type=data_type,
-                    input_file=str(input_file),
-                    output_npy=str(output_dir / (output_name + '.npy')),
-                    output_csv=str(output_dir / (output_name + '.csv')),
-                    max_output_len=max_output_len)
+    run_hf.generate(
+        model_dir=str(model_dir),
+        data_type=data_type,
+        input_file=str(input_file),
+        output_npy=str(output_dir / f'{output_name}.npy'),
+        output_csv=str(output_dir / f'{output_name}.csv'),
+        max_output_len=max_output_len,
+    )
 
 
 def generate_hf_outputs():

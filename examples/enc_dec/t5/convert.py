@@ -177,7 +177,7 @@ def convert_checkpoint(args):
         config[key] = {}
         for val_key, val_val in val.items():
             config[key][val_key] = val_val
-    with open((saved_dir / f"config.ini").as_posix(), 'w') as configfile:
+    with open((saved_dir / "config.ini").as_posix(), 'w') as configfile:
         config.write(configfile)
 
     i_gpu_num = args.inference_tensor_para_size
@@ -237,4 +237,4 @@ if __name__ == "__main__":
     convert_checkpoint(args)
     stop_time = datetime.now()
     run_time = (stop_time - start_time)
-    LOGGER.info("Spend {} (h:m:s) to convert the model".format(run_time))
+    LOGGER.info(f"Spend {run_time} (h:m:s) to convert the model")

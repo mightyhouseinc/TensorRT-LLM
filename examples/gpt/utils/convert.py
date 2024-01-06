@@ -77,9 +77,8 @@ def generate_int8(weights, act_range, is_qkv=False, multi_query_mode=False):
             dim=-1, keepdims=True)[0].cpu().numpy()
         scale_w_orig_quant_c = 127. / act_range["w"].reshape(3,
                                                              -1).cpu().numpy()
-    elif is_qkv and multi_query_mode:
-        raise ValueError(
-            f"Multi-query w/ int8 quant has not been supported yet")
+    elif is_qkv:
+        raise ValueError("Multi-query w/ int8 quant has not been supported yet")
     else:
         scale_w_orig_quant_t = 127. / act_range["w"].max().cpu().numpy()
         scale_w_orig_quant_c = 127. / act_range["w"].cpu().numpy()
@@ -132,8 +131,6 @@ def write_int8(vals,
         saved_keys_once += [
             "scale_x_orig_quant", "scale_w_quant_orig", "scale_y_accum_quant"
         ]
-    # per-column scaling factors are loaded per-gpu for ColumnParallel GEMMs (QKV, FC1)
-    if not kv_cache_only:
         if split_dim == -1:
             save_split(
                 np.split(vals["scale_w_quant_orig.col"],
@@ -168,7 +165,7 @@ def split_and_save_weight(tp_rank, saved_dir, split_factor, key, vals,
     multi_query_mode = config.get("multi_query_mode", False)
     local_dim = config.get("local_dim", None)
 
-    save_int8 = int8_outputs == "all" or int8_outputs == "kv_cache_only"
+    save_int8 = int8_outputs in ["all", "kv_cache_only"]
 
     if not isinstance(vals, list):
         vals = [vals]
@@ -220,7 +217,7 @@ def split_and_save_weight(tp_rank, saved_dir, split_factor, key, vals,
         if split_gated_activation:
             assert not save_int8
             prefix, dot, suffix = key.rpartition(".")
-            key = prefix + ".gate" + dot + suffix
+            key = f"{prefix}.gate{dot}{suffix}"
 
             gate = np.concatenate(gates, axis=cat_dim)
             split_vals = np.split(gate, split_factor, axis=cat_dim)
@@ -289,9 +286,10 @@ def split_and_save_weight(tp_rank, saved_dir, split_factor, key, vals,
                        tp_rank,
                        split_factor,
                        kv_cache_only=int8_outputs == "kv_cache_only")
-    elif ("attention.query.weight" in key or "attention.query.bias" in key
-          or "attention.key_value.weight" in key
-          or "attention.key_value.bias" in key):
-        pass
-    else:
+    elif (
+        "attention.query.weight" not in key
+        and "attention.query.bias" not in key
+        and "attention.key_value.weight" not in key
+        and "attention.key_value.bias" not in key
+    ):
         print(f"[WARNING] {key} not handled by converter")

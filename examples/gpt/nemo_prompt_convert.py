@@ -61,7 +61,7 @@ def prompt_convert(out_file, prompt_config, prompt_weights):
     else:
         prompt_templates = prompt_config["task_templates"]
         actual_task_id = 0
-        for task_name_id, prompt_task in enumerate(prompt_templates):
+        for prompt_task in prompt_templates:
             prompt_task_name = prompt_task["taskname"]
             LOGGER.info(f"Task {actual_task_id}: {prompt_task['taskname']}")
             prompt_task_weights = prompt_weights["prompt_table"].get(

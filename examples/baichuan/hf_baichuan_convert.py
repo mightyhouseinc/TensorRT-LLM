@@ -34,11 +34,11 @@ def smooth_baichuan_model(model, scales, alpha, baichuan_smoother):
     # Smooth the activation and weights with smoother = $\diag{s}$
     for name, module in model.named_modules():
         class_name = module.__class__.__name__
-        if not 'Layer' in class_name:
+        if 'Layer' not in class_name:
             continue
         print(f'smoothing module: {name}, class_name: {class_name}')
         # qkv_proj
-        layer_name_qkv = name + ".self_attn.W_pack"
+        layer_name_qkv = f"{name}.self_attn.W_pack"
 
         smoother = smooth_gemm(module.self_attn.W_pack.weight,
                                scales[layer_name_qkv]["x"],
@@ -49,7 +49,7 @@ def smooth_baichuan_model(model, scales, alpha, baichuan_smoother):
             dim=1)[0]
 
         # =================================================================
-        layer_name = name + ".self_attn.o_proj"
+        layer_name = f"{name}.self_attn.o_proj"
         smoother = smooth_gemm(module.self_attn.o_proj.weight,
                                scales[layer_name]["x"], None, None, alpha)
         baichuan_smoother[layer_name] = smoother.float()
@@ -59,8 +59,8 @@ def smooth_baichuan_model(model, scales, alpha, baichuan_smoother):
             dim=1)[0]
 
         # ==================================================================
-        fc1_layer_name = name + ".mlp.gate_proj"
-        gate_layer_name = name + ".mlp.up_proj"
+        fc1_layer_name = f"{name}.mlp.gate_proj"
+        gate_layer_name = f"{name}.mlp.up_proj"
 
         smoother = smooth_gemm_fc1_gate(module.mlp.gate_proj.weight,
                                         module.mlp.up_proj.weight,
@@ -77,7 +77,7 @@ def smooth_baichuan_model(model, scales, alpha, baichuan_smoother):
             dim=1)[0]
 
         # ==================================================================
-        layer_name = name + ".mlp.down_proj"
+        layer_name = f"{name}.mlp.down_proj"
         smoother = smooth_gemm(module.mlp.down_proj.weight,
                                scales[layer_name]["x"], None, None, alpha)
         baichuan_smoother[layer_name] = smoother.float()
@@ -120,7 +120,7 @@ def transpose_weights(hf_name, param):
     weight_to_transpose = [
         "W_pack", "o_proj", "gate_proj", "down_proj", "up_proj"
     ]
-    if any([k in hf_name for k in weight_to_transpose]):
+    if any(k in hf_name for k in weight_to_transpose):
         if len(param.shape) == 2:
             param = param.transpose(0, 1)
     return param
@@ -148,9 +148,9 @@ def hf_baichuan_converter(args):
             AutoTokenizer.from_pretrained(args.in_file,
                                           use_fast=False,
                                           trust_remote_code=True))
-        if args.smoothquant is not None:
-            smooth_baichuan_model(model, act_range, args.smoothquant,
-                                  baichuan_smoother)
+    if args.smoothquant is not None:
+        smooth_baichuan_model(model, act_range, args.smoothquant,
+                              baichuan_smoother)
 
     config = configparser.ConfigParser()
     config["baichuan"] = {}
@@ -181,7 +181,7 @@ def hf_baichuan_converter(args):
             continue
         bin_name = baichuan_to_bin_name(name)
 
-        if name.replace(".weight", "") in baichuan_smoother.keys():
+        if name.replace(".weight", "") in baichuan_smoother:
             smoother = baichuan_smoother[name.replace(".weight", "")]
             smoother = smoother.detach().cpu().numpy()
             starmap_args.append(
@@ -282,7 +282,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print("\n=============== Argument ===============")
     for key in vars(args):
-        print("{}: {}".format(key, vars(args)[key]))
+        print(f"{key}: {vars(args)[key]}")
     print("========================================")
 
     assert (args.calibrate_kv_cache or args.smoothquant), \

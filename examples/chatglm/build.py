@@ -38,9 +38,8 @@ from tensorrt_llm.quantization import QuantMode
 
 def get_engine_name(model, dtype, tp_size, pp_size, rank):
     if pp_size == 1:
-        return '{}_{}_tp{}_rank{}.engine'.format(model, dtype, tp_size, rank)
-    return '{}_{}_tp{}_pp{}_rank{}.engine'.format(model, dtype, tp_size,
-                                                  pp_size, rank)
+        return f'{model}_{dtype}_tp{tp_size}_rank{rank}.engine'
+    return f'{model}_{dtype}_tp{tp_size}_pp{pp_size}_rank{rank}.engine'
 
 
 def find_engines(dir: Path,

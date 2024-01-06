@@ -60,11 +60,11 @@ def generate_int8(weights, act_range, is_qkv=False, multi_query_mode=False):
             dim=-1, keepdims=True)[0].cpu().numpy()
         scale_w_orig_quant_c = 127. / act_range["w"].reshape(3,
                                                              -1).cpu().numpy()
-    elif is_qkv and multi_query_mode:
+    elif is_qkv:
         hidden_dim = weights.shape[0]
         local_dim = act_range["w"].shape[0]
         kv_dim = (local_dim - hidden_dim) // 2
-        scale_w_q = act_range["w"][0:hidden_dim]
+        scale_w_q = act_range["w"][:hidden_dim]
         scale_w_k = act_range["w"][hidden_dim:hidden_dim + kv_dim]
         scale_w_v = act_range["w"][-kv_dim:]
 
@@ -222,7 +222,7 @@ def split_and_save_weight(i, saved_dir, factor, key, val, act_range, config):
     multi_query_mode = config.get("multi_query_mode", False)
     local_dim = config.get("local_dim", None)
 
-    save_int8 = int8_outputs == "all" or int8_outputs == "kv_cache_only"
+    save_int8 = int8_outputs in ["all", "kv_cache_only"]
 
     if "input_layernorm.weight" in key or "input_layernorm.bias" in key or \
         "attention.dense.bias" in key or "post_layernorm.weight" in key or \
@@ -255,6 +255,7 @@ def split_and_save_weight(i, saved_dir, factor, key, val, act_range, config):
         hidden_dim = val.shape[0]
         if local_dim is None:
             local_dim = val.shape[-1] // 3
+        split_dim = -1
         if multi_query_mode:
             head_size = (val.shape[-1] - local_dim) // 2
             val = val.reshape(hidden_dim, local_dim + 2 * head_size)
@@ -267,10 +268,8 @@ def split_and_save_weight(i, saved_dir, factor, key, val, act_range, config):
                 np.concatenate((w_q_split[ii], w_k_split[ii], w_v_split[ii]),
                                axis=-1) for ii in range(factor)
             ]
-            split_dim = -1
         else:
             val = val.reshape(hidden_dim, 3, local_dim)
-            split_dim = -1
             split_vals = np.split(val, factor, axis=split_dim)
         save_split(split_vals, saved_dir, key, i, factor)
         if save_int8:

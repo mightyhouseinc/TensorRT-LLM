@@ -52,10 +52,7 @@ def build_engines(model_cache: _tp.Optional[str] = None, only_fp8=False):
         assert hf_dir.is_dir()
         run_command(["git", "pull"], cwd=hf_dir)
     else:
-        if _pf.system() == "Windows":
-            url_prefix = ""
-        else:
-            url_prefix = "file://"
+        url_prefix = "" if _pf.system() == "Windows" else "file://"
         model_url = url_prefix + str(
             _pl.Path(model_cache) / model_name
         ) if model_cache else "https://huggingface.co/EleutherAI/gpt-j-6b"

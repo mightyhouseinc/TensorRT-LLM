@@ -137,7 +137,7 @@ def capture_activation_range(model,
 
     hooks = []
     for name, m in model.named_modules():
-        if isinstance(m, nn.Linear) or isinstance(m, Conv1D):
+        if isinstance(m, (nn.Linear, Conv1D)):
             hooks.append(
                 m.register_forward_hook(
                     functools.partial(stat_input_hook, name=name)))

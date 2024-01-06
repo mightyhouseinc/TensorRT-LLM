@@ -89,9 +89,7 @@ def parse_arguments():
         type=int,
         default=1,
         help='The number of workers for converting checkpoint in parallel')
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def load_falcon_config(model_dir: str) -> FalconConfig:
@@ -580,22 +578,21 @@ def load_from_hf_falcon_checkpoint(
                         weights[f'{tllm_prex}.post_layernorm.weight'] = param
                     else:
                         weights[f'{tllm_prex}.post_layernorm.bias'] = param
-            else:
-                if 'word_embeddings' in name:
-                    if mapping.is_first_pp_rank():
-                        weights['transformer.embedding.weight'] = param
-                    if mapping.is_last_pp_rank():
-                        weights['lm_head.weight'] = split_matrix(
-                            param.clone(),
-                            mapping.tp_size,
-                            mapping.tp_rank,
-                            dim=0)
-                elif 'ln_f' in name:
-                    if mapping.is_last_pp_rank():
-                        if name.endswith('weight'):
-                            weights['transformer.ln_f.weight'] = param
-                        else:
-                            weights['transformer.ln_f.bias'] = param
+            elif 'word_embeddings' in name:
+                if mapping.is_first_pp_rank():
+                    weights['transformer.embedding.weight'] = param
+                if mapping.is_last_pp_rank():
+                    weights['lm_head.weight'] = split_matrix(
+                        param.clone(),
+                        mapping.tp_size,
+                        mapping.tp_rank,
+                        dim=0)
+            elif 'ln_f' in name:
+                if mapping.is_last_pp_rank():
+                    if name.endswith('weight'):
+                        weights['transformer.ln_f.weight'] = param
+                    else:
+                        weights['transformer.ln_f.bias'] = param
         del state_dict
 
     tok = time.time()
@@ -699,15 +696,16 @@ def load_from_awq_falcon(quant_ckpt_path: str,
         return scale
 
     def get_tllm_qkv_weight_from_awq(prefix, tllm_prex: str):
-        q_weight = load(prefix + "q" + awq_suffix_list[0]).T.contiguous()
-        k_weight = load(prefix + "k" + awq_suffix_list[0]).T.contiguous()
-        v_weight = load(prefix + "v" + awq_suffix_list[0]).T.contiguous()
+        q_weight = load(f"{prefix}q{awq_suffix_list[0]}").T.contiguous()
+        k_weight = load(f"{prefix}k{awq_suffix_list[0]}").T.contiguous()
+        v_weight = load(f"{prefix}v{awq_suffix_list[0]}").T.contiguous()
         dim_k = q_weight.shape[0]
         q_weight = torch_split(q_weight, 1)
         k_weight = torch_split(k_weight, 1)
         v_weight = torch_split(v_weight, 1)
-        qkv_pre_quant_scale = load(prefix + "q" + awq_suffix_list[2]).reshape(
-            (1, dim_k))
+        qkv_pre_quant_scale = load(f"{prefix}q{awq_suffix_list[2]}").reshape(
+            (1, dim_k)
+        )
         qkv_weights = torch.cat((q_weight, k_weight, v_weight), dim=1)
         qkv_scale = get_scale(qkv_weights)
 
@@ -838,10 +836,10 @@ def load_from_awq_falcon(quant_ckpt_path: str,
 
             if not parallel_attention:
                 # 4.6 post_layernorm
-                v = load(prefix + 'post_layernorm' + split_sym + "weight")
+                v = load(f'{prefix}post_layernorm{split_sym}weight')
                 weights[f'{tllm_prex}.post_layernorm.weight'] = v.to(
                     torch_dtype)
-                v = load(prefix + 'post_layernorm' + split_sym + "bias")
+                v = load(f'{prefix}post_layernorm{split_sym}bias')
                 weights[f'{tllm_prex}.post_layernorm.bias'] = v.to(torch_dtype)
 
     tok = time.time()

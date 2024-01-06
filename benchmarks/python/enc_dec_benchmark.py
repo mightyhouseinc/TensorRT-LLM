@@ -117,7 +117,7 @@ class EncDecBenchmark(BaseBenchmark):
                 for key, value in config["plugin_config"].items():
                     # Same effect as self.use_foo_plugin = config.json["foo_plugin"]
                     if "plugin" in key:
-                        key = "use_" + key
+                        key = f"use_{key}"
                     plugin_config[key] = value
                 return engine_model_name, model_config, builder_config, plugin_config
 
@@ -275,13 +275,13 @@ class EncDecBenchmark(BaseBenchmark):
             inputs['position_ids'] = position_ids.contiguous()
 
         # output tensors
-        outputs = {}
-        outputs["encoder_output"] = torch.empty(
-            hidden_states_shape,
-            dtype=hidden_states_dtype("encoder_output"),
-            device=self.device,
-        ).contiguous()
-
+        outputs = {
+            "encoder_output": torch.empty(
+                hidden_states_shape,
+                dtype=hidden_states_dtype("encoder_output"),
+                device=self.device,
+            ).contiguous()
+        }
         # run encoder
         self.encoder_session.set_shapes(inputs)
         ok = self.encoder_session.run(inputs, outputs, stream)

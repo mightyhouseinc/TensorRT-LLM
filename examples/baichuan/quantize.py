@@ -59,11 +59,7 @@ def get_calib_dataloader(data="cnn_dailymail",
                                   truncation=True,
                                   max_length=block_size).input_ids.cuda()
 
-    calib_dataloader = DataLoader(dataset_input_ids,
-                                  batch_size=batch_size,
-                                  shuffle=False)
-
-    return calib_dataloader
+    return DataLoader(dataset_input_ids, batch_size=batch_size, shuffle=False)
 
 
 def get_tokenizer(ckpt_path, **kwargs):
@@ -125,8 +121,7 @@ def get_args():
                         default=None,
                         help="Directory of dataset cache.")
     parser.add_argument('--seed', type=int, default=None, help='Random seed')
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def main():
@@ -151,21 +146,13 @@ def main():
 
     quant_cfg_dict = {}
     if not args.quantize_lm_head:
-        quant_cfg_dict.update({
-            "*lm_head*": {
-                "enable": False
-            },
-        })
+        quant_cfg_dict["*lm_head*"] = {"enable": False}
     if args.group_size != 128:
-        quant_cfg_dict.update({
-            "*weight_quantizer": {
-                "num_bits": 4,
-                "block_sizes": {
-                    -1: args.group_size
-                },
-                "enable": True
-            },
-        })
+        quant_cfg_dict["*weight_quantizer"] = {
+            "num_bits": 4,
+            "block_sizes": {-1: args.group_size},
+            "enable": True,
+        }
     print(f"quant_cfg_dict: {quant_cfg_dict}")
 
     model = quantize_and_export(model,

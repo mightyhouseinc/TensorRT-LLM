@@ -18,7 +18,7 @@ from tensorrt_llm import logger
 
 
 def get_engine_name(rank):
-    return 'rank{}.engine'.format(rank)
+    return f'rank{rank}.engine'
 
 
 def trt_dtype_to_torch(dtype):
@@ -29,7 +29,7 @@ def trt_dtype_to_torch(dtype):
     elif dtype == trt.int32:
         return torch.int32
     else:
-        raise TypeError("%s is not supported" % dtype)
+        raise TypeError(f"{dtype} is not supported")
 
 
 def TRTOPT(args, config):
@@ -270,11 +270,13 @@ if __name__ == '__main__':
                                        skip_special_tokens=True)
             for batch_idx in range(batch_size)
         ]
-        stripped_text = [[
-            output_beams_list[batch_idx][beam_idx].strip()
-            for beam_idx in range(args.num_beams)
-        ] for batch_idx in range(batch_size)]
-        return stripped_text
+        return [
+            [
+                output_beams_list[batch_idx][beam_idx].strip()
+                for beam_idx in range(args.num_beams)
+            ]
+            for batch_idx in range(batch_size)
+        ]
 
     stripped_text = opt_blip2(prompt, inputs_opt, atts_opt)
     if args.check_accuracy:

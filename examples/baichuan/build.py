@@ -54,7 +54,7 @@ def trt_dtype_to_onnx(dtype):
     elif dtype == trt.int32:
         return TensorProto.DataType.INT32
     else:
-        raise TypeError("%s is not supported" % dtype)
+        raise TypeError(f"{dtype} is not supported")
 
 
 def to_onnx(network, path):
@@ -102,7 +102,7 @@ def to_onnx(network, path):
 
 
 def get_engine_name(model, dtype, tp_size, rank):
-    return '{}_{}_tp{}_rank{}.engine'.format(model, dtype, tp_size, rank)
+    return f'{model}_{dtype}_tp{tp_size}_rank{rank}.engine'
 
 
 def serialize_engine(engine, path):
@@ -343,7 +343,7 @@ def parse_arguments():
     if not args.remove_input_padding:
         if args.use_gpt_attention_plugin:
             logger.warning(
-                f"It is recommended to specify --remove_input_padding when using GPT attention plugin"
+                "It is recommended to specify --remove_input_padding when using GPT attention plugin"
             )
 
     if args.use_inflight_batching:
@@ -402,10 +402,11 @@ def parse_arguments():
         args.n_embd = hf_config.hidden_size
         args.n_head = hf_config.num_attention_heads
         args.n_layer = hf_config.num_hidden_layers
-        if args.model_version == 'v1_7b' or args.model_version == 'v2_7b':
-            args.n_positions = hf_config.max_position_embeddings
-        else:
-            args.n_positions = hf_config.model_max_length
+        args.n_positions = (
+            hf_config.max_position_embeddings
+            if args.model_version in ['v1_7b', 'v2_7b']
+            else hf_config.model_max_length
+        )
         args.vocab_size = hf_config.vocab_size
         args.hidden_act = hf_config.hidden_act
     elif args.bin_model_dir is not None:
@@ -418,39 +419,37 @@ def parse_arguments():
         args.n_positions = n_positions
         args.vocab_size = vocab_size
         args.hidden_act = hidden_act
-    else:
-        # default values are based on v1_13b, change them based on model_version
-        if args.model_version == 'v1_7b':
-            args.inter_size = 11008
-            args.n_embd = 4096
-            args.n_head = 32
-            args.n_layer = 32
-            args.n_positions = 4096
-            args.vocab_size = 64000
-            args.hidden_act = 'silu'
-        elif args.model_version == 'v2_7b':
-            args.inter_size = 11008
-            args.n_embd = 4096
-            args.n_head = 32
-            args.n_layer = 32
-            args.n_positions = 4096
-            args.vocab_size = 125696
-            args.hidden_act = 'silu'
-        elif args.model_version == 'v2_13b':
-            args.inter_size = 13696
-            args.n_embd = 5120
-            args.n_head = 40
-            args.n_layer = 40
-            args.n_positions = 4096
-            args.vocab_size = 125696
-            args.hidden_act = 'silu'
+    elif args.model_version == 'v1_7b':
+        args.inter_size = 11008
+        args.n_embd = 4096
+        args.n_head = 32
+        args.n_layer = 32
+        args.n_positions = 4096
+        args.vocab_size = 64000
+        args.hidden_act = 'silu'
+    elif args.model_version == 'v2_13b':
+        args.inter_size = 13696
+        args.n_embd = 5120
+        args.n_head = 40
+        args.n_layer = 40
+        args.n_positions = 4096
+        args.vocab_size = 125696
+        args.hidden_act = 'silu'
 
+    elif args.model_version == 'v2_7b':
+        args.inter_size = 11008
+        args.n_embd = 4096
+        args.n_head = 32
+        args.n_layer = 32
+        args.n_positions = 4096
+        args.vocab_size = 125696
+        args.hidden_act = 'silu'
     if args.weight_only_precision == 'int4_awq':
         if args.vocab_size % 64 != 0:
             args.vocab_size = int((args.vocab_size + 63) / 64) * 64
-            logger.info("To use awq we pad it to {}.".format(args.vocab_size))
+            logger.info(f"To use awq we pad it to {args.vocab_size}.")
 
-    if args.weight_only_precision == 'int4_awq' or args.weight_only_precision == 'int4_gptq':
+    if args.weight_only_precision in ['int4_awq', 'int4_gptq']:
         assert args.n_embd % args.group_size == 0, f"n_embd {args.n_embd} is not divisible by group_size {args.group_size}"
         group_num = args.n_embd // args.group_size
         assert group_num % args.world_size == 0, (

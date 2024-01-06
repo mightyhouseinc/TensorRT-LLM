@@ -37,7 +37,7 @@ def trt_dtype_to_torch(dtype):
     elif dtype == trt.int32:
         return torch.int32
     else:
-        raise TypeError("%s is not supported" % dtype)
+        raise TypeError(f"{dtype} is not supported")
 
 
 def parse_arguments():
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     logger.info(f'Loading engine from {serialize_path}')
     with open(serialize_path, 'rb') as f:
         engine_buffer = f.read()
-    logger.info(f'Creating session from engine')
+    logger.info('Creating session from engine')
     session = Session.from_serialized_engine(engine_buffer)
 
     for i in range(3):

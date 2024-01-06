@@ -20,8 +20,7 @@ import typing as _tp
 
 
 def run_command(command: _tp.Sequence[str], *, cwd=None, **kwargs) -> None:
-    print(f"Running: cd %s && %s" %
-          (str(cwd or _pl.Path.cwd()), " ".join(command)))
+    print(f'Running: cd {str(cwd or _pl.Path.cwd())} && {" ".join(command)}')
     _sp.check_call(command, cwd=cwd, **kwargs)
 
 
@@ -36,8 +35,7 @@ def wincopy(source: str, dest: str, isdir: bool, cwd=None) -> None:
                     cwd=cwd)
     else:  # Directory sync
         copy_cmd = ["robocopy", source, f"./{dest}", "/mir", "/e"]
-        print(f"Running: cd %s && %s" %
-              (str(cwd or _pl.Path.cwd()), " ".join(copy_cmd)))
+        print(f'Running: cd {str(cwd or _pl.Path.cwd())} && {" ".join(copy_cmd)}')
 
         # Run the command from the specified directory
         result = _sp.run(copy_cmd, cwd=cwd)

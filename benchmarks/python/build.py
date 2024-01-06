@@ -199,10 +199,7 @@ def get_quant_mode(quantization):
                                                 per_group=True,
                                                 use_int4_weights=True)
 
-    elif quantization == None:
-        pass
-
-    else:
+    elif quantization != None:
         raise Exception(f'Unexpected quantization: {quantization}')
 
     return quant_mode, use_smooth_quant, weight_only_precision
