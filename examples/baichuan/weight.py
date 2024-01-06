@@ -68,8 +68,9 @@ def get_scaling_factors(
     """
 
     if model_path is None:
-        logger.warning(f"--quantized_fp8_model_path not specified. "
-                       f"Initialize quantization scales automatically.")
+        logger.warning(
+            '--quantized_fp8_model_path not specified. Initialize quantization scales automatically.'
+        )
         return get_dummy_quant_scales(num_layers)
     weight_dict = np.load(model_path)
 
@@ -120,10 +121,7 @@ def get_scaling_factors(
 
 def extract_layer_idx(name):
     ss = name.split('.')
-    for s in ss:
-        if s.isdigit():
-            return s
-    return None
+    return next((s for s in ss if s.isdigit()), None)
 
 
 def split(v, tp_size, idx, dim=0):

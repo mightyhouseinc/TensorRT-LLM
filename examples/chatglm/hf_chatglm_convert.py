@@ -125,10 +125,10 @@ def parse_arguments(args):
 @torch.no_grad()
 def smooth_chatglm_model(model, scales, alpha):
     for name, module in model.named_modules():
-        if not module._get_name() == "GLMBlock":
+        if module._get_name() != "GLMBlock":
             continue
 
-        layer_name = name + '.self_attention.query_key_value'
+        layer_name = f'{name}.self_attention.query_key_value'
         smoother = smooth_gemm(
             module.self_attention.query_key_value.weight,
             scales[layer_name]["x"],
@@ -142,7 +142,7 @@ def smooth_chatglm_model(model, scales, alpha):
                 dim=1)[0]
 
         # fc1
-        layer_name = name + ".mlp.dense_h_to_4h"
+        layer_name = f"{name}.mlp.dense_h_to_4h"
         smoother = smooth_gemm(
             module.mlp.dense_h_to_4h.weight,
             scales[layer_name]["x"],
@@ -155,7 +155,7 @@ def smooth_chatglm_model(model, scales, alpha):
             dim=1)[0]
 
         # fc2
-        layer_name = name + ".mlp.dense_4h_to_h"
+        layer_name = f"{name}.mlp.dense_4h_to_h"
         smoother = smooth_gemm(
             module.mlp.dense_4h_to_h.weight,
             scales[layer_name]["x"],
@@ -245,8 +245,8 @@ def hf_chatglm_converter(args):
             tokenizer,
             dataset,
         )
-        if args.smoothquant is not None:
-            smooth_chatglm_model(model, act_range, args.smoothquant)
+    if args.smoothquant is not None:
+        smooth_chatglm_model(model, act_range, args.smoothquant)
 
     config = configparser.ConfigParser()
     config[args.model_name] = {}
@@ -288,23 +288,22 @@ def hf_chatglm_converter(args):
         if bin_name in global_ft_weights:
             torch_to_numpy(param.to(storage_type).cpu()).tofile(
                 saved_dir / f"{bin_name}.bin")
+        elif args.processes == 1:
+            split_and_save_weight(
+                0, saved_dir, infer_tp, bin_name, param.to(storage_type),
+                storage_type, act_range.get(name.replace(".weight", "")), {
+                    "int8_outputs": int8_outputs,
+                    "multi_query_mode": multi_query_mode,
+                    "local_dim": None,
+                })
         else:
-            if args.processes == 1:
-                split_and_save_weight(
-                    0, saved_dir, infer_tp, bin_name, param.to(storage_type),
-                    storage_type, act_range.get(name.replace(".weight", "")), {
-                        "int8_outputs": int8_outputs,
-                        "multi_query_mode": multi_query_mode,
-                        "local_dim": None,
-                    })
-            else:
-                starmap_args.append(
-                    (0, saved_dir, infer_tp, bin_name, param.to(storage_type),
-                     storage_type, act_range.get(name.replace(".weight", "")), {
-                         "int8_outputs": int8_outputs,
-                         "multi_query_mode": multi_query_mode,
-                         "local_dim": None,
-                     }))
+            starmap_args.append(
+                (0, saved_dir, infer_tp, bin_name, param.to(storage_type),
+                 storage_type, act_range.get(name.replace(".weight", "")), {
+                     "int8_outputs": int8_outputs,
+                     "multi_query_mode": multi_query_mode,
+                     "local_dim": None,
+                 }))
 
     starmap_args = tqdm(starmap_args, desc="saving weights")
     if args.processes > 1:

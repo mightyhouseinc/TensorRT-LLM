@@ -69,7 +69,7 @@ def capture_activation_range(model,
 
     hooks = []
     for name, m in model.named_modules():
-        if isinstance(m, nn.Linear) or isinstance(m, Conv1D):
+        if isinstance(m, (nn.Linear, Conv1D)):
             hooks.append(
                 m.register_forward_hook(
                     functools.partial(stat_input_hook, name=name)))
@@ -159,9 +159,9 @@ def merge_qkv_scales(q_name, hf_model, scales, gptj_qkv_para):
     layer_name_v = layer_name_q.replace("q_proj", "v_proj")
     layer_name_qkv = layer_name_q.replace("q_proj", "qkv_proj")
 
-    q = hf_model.state_dict()[layer_name_q + ".weight"]
-    k = hf_model.state_dict()[layer_name_k + ".weight"]
-    v = hf_model.state_dict()[layer_name_v + ".weight"]
+    q = hf_model.state_dict()[f"{layer_name_q}.weight"]
+    k = hf_model.state_dict()[f"{layer_name_k}.weight"]
+    v = hf_model.state_dict()[f"{layer_name_v}.weight"]
 
     weight = torch.cat([q, k, v], dim=0)
 
@@ -216,7 +216,7 @@ def gptj_to_trt_llm_name(orig_name):
 # In order to use the preprocess codes of gpt2, we transpose them firstly.
 def transpose_weights(hf_name, param):
     weight_to_transpose = ["out_proj", "fc_in", "fc_out"]
-    if any([k in hf_name for k in weight_to_transpose]):
+    if any(k in hf_name for k in weight_to_transpose):
         if len(param.shape) == 2:
             param = param.transpose(0, 1)
     return param
@@ -269,10 +269,7 @@ def hf_gptj_converter(args: ProgArgs):
         "model.lm_head.bias"
     ]
 
-    int8_outputs = None
-    if args.calibrate_kv_cache:
-        int8_outputs = "kv_cache_only"
-
+    int8_outputs = "kv_cache_only" if args.calibrate_kv_cache else None
     starmap_args = []
     for name, param in model.named_parameters():
         if "weight" not in name and "bias" not in name:

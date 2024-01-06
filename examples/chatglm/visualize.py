@@ -26,7 +26,7 @@ def trt_dtype_to_onnx(dtype):
     elif dtype == trt.int32:
         return TensorProto.DataType.INT32
     else:
-        raise TypeError("%s is not supported" % dtype)
+        raise TypeError(f"{dtype} is not supported")
 
 
 def to_onnx(network, path):

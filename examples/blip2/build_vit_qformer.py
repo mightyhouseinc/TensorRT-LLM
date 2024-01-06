@@ -42,10 +42,10 @@ def build(iPart, minBS=1, optBS=2, maxBS=4):
 
     with open(onnxFile, 'rb') as model:
         if not parser.parse(model.read(), "/".join(onnxFile.split("/"))):
-            print("Failed parsing %s" % onnxFile)
+            print(f"Failed parsing {onnxFile}")
             for error in range(parser.num_errors):
                 print(parser.get_error(error))
-        print("Succeeded parsing %s" % onnxFile)
+        print(f"Succeeded parsing {onnxFile}")
 
     nBS = -1
     nMinBS = minBS
@@ -78,8 +78,8 @@ def build(iPart, minBS=1, optBS=2, maxBS=4):
     t0 = time()
     engineString = builder.build_serialized_network(network, config)
     t1 = time()
-    if engineString == None:
-        print("Failed building %s" % planFile)
+    if engineString is None:
+        print(f"Failed building {planFile}")
     else:
         print("Succeeded building %s in %d s" % (planFile, t1 - t0))
 
@@ -88,7 +88,7 @@ def build(iPart, minBS=1, optBS=2, maxBS=4):
 
 
 if __name__ == "__main__":
-    if iModelID != 0 and iModelID != 1:
+    if iModelID not in [0, 1]:
         print("Error model number, should be in [0, 1]")
         exit()
 

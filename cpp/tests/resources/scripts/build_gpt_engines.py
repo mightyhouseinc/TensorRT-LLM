@@ -60,11 +60,7 @@ def build_engines(model_cache: _tp.Optional[str] = None, world_size: int = 1):
         assert hf_dir.is_dir()
         run_command(["git", "pull"], cwd=hf_dir)
     else:
-        if _pf.system() == "Windows":
-            url_prefix = ""
-        else:
-            url_prefix = "file://"
-
+        url_prefix = "" if _pf.system() == "Windows" else "file://"
         model_url = url_prefix + str(
             _pl.Path(model_cache) /
             model_name) if model_cache else "https://huggingface.co/gpt2"
@@ -101,7 +97,7 @@ def build_engines(model_cache: _tp.Optional[str] = None, world_size: int = 1):
     safetensor_file = hf_dir / "model.safetensors"
     has_safetensor = safetensor_file.exists()
     if has_safetensor:
-        safetensor_file.rename(str(safetensor_file) + ".bak")
+        safetensor_file.rename(f"{str(safetensor_file)}.bak")
 
     assert (hf_dir / model_file_name).is_file()
 
@@ -170,7 +166,7 @@ def build_engines(model_cache: _tp.Optional[str] = None, world_size: int = 1):
         '--use_context_fmha_for_generation', '--max_draft_len=5', *ifb_args)
 
     if has_safetensor:
-        _pl.Path(str(safetensor_file) + ".bak").rename(safetensor_file)
+        _pl.Path(f"{str(safetensor_file)}.bak").rename(safetensor_file)
 
     print("Done.")
 

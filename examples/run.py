@@ -174,31 +174,30 @@ def parse_input(tokenizer,
                                          truncation=True,
                                          max_length=max_input_length)
             batch_input_ids.append(input_ids)
-    else:
-        if input_file.endswith('.csv'):
-            with open(input_file, 'r') as csv_file:
-                csv_reader = csv.reader(csv_file, delimiter=',')
-                for line in csv_reader:
-                    input_ids = np.array(line, dtype='int32')
-                    batch_input_ids.append(input_ids[-max_input_length:])
-        elif input_file.endswith('.npy'):
-            inputs = np.load(input_file)
-            for row in inputs:
-                input_ids = row[row != pad_id]
+    elif input_file.endswith('.csv'):
+        with open(input_file, 'r') as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            for line in csv_reader:
+                input_ids = np.array(line, dtype='int32')
                 batch_input_ids.append(input_ids[-max_input_length:])
-        elif input_file.endswith('.txt'):
-            with open(input_file, 'r', encoding='utf-8',
-                      errors='replace') as txt_file:
-                input_text = txt_file.read()
-                input_ids = tokenizer.encode(
-                    input_text,
-                    add_special_tokens=add_special_tokens,
-                    truncation=True,
-                    max_length=max_input_length)
-                batch_input_ids.append(input_ids)
-        else:
-            print('Input file format not supported.')
-            raise SystemExit
+    elif input_file.endswith('.npy'):
+        inputs = np.load(input_file)
+        for row in inputs:
+            input_ids = row[row != pad_id]
+            batch_input_ids.append(input_ids[-max_input_length:])
+    elif input_file.endswith('.txt'):
+        with open(input_file, 'r', encoding='utf-8',
+                  errors='replace') as txt_file:
+            input_text = txt_file.read()
+            input_ids = tokenizer.encode(
+                input_text,
+                add_special_tokens=add_special_tokens,
+                truncation=True,
+                max_length=max_input_length)
+            batch_input_ids.append(input_ids)
+    else:
+        print('Input file format not supported.')
+        raise SystemExit
 
     if num_prepend_vtokens:
         assert len(num_prepend_vtokens) == len(batch_input_ids)
@@ -398,24 +397,23 @@ def main(args):
                              sequence_lengths,
                              output_csv=args.output_csv,
                              output_npy=args.output_npy)
-    else:
-        if runtime_rank == 0:
-            output_ids = outputs['output_ids']
-            sequence_lengths = outputs['sequence_lengths']
-            context_logits = None
-            generation_logits = None
-            if runner.gather_all_token_logits:
-                context_logits = outputs['context_logits']
-                generation_logits = outputs['generation_logits']
-            print_output(tokenizer,
-                         output_ids,
-                         input_lengths,
-                         sequence_lengths,
-                         output_csv=args.output_csv,
-                         output_npy=args.output_npy,
-                         context_logits=context_logits,
-                         generation_logits=generation_logits,
-                         output_logits_npy=args.output_logits_npy)
+    elif runtime_rank == 0:
+        output_ids = outputs['output_ids']
+        sequence_lengths = outputs['sequence_lengths']
+        context_logits = None
+        generation_logits = None
+        if runner.gather_all_token_logits:
+            context_logits = outputs['context_logits']
+            generation_logits = outputs['generation_logits']
+        print_output(tokenizer,
+                     output_ids,
+                     input_lengths,
+                     sequence_lengths,
+                     output_csv=args.output_csv,
+                     output_npy=args.output_npy,
+                     context_logits=context_logits,
+                     generation_logits=generation_logits,
+                     output_logits_npy=args.output_logits_npy)
 
 
 if __name__ == '__main__':

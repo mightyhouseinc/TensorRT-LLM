@@ -25,9 +25,8 @@ def csv_to_npy(input_file, output_file, pad_id, verbose):
     data = []
     with open(input_file, newline='') as csvfile:
         csv_reader = csv.reader(csvfile, delimiter=',')
-        for line in csv_reader:
-            data.append([int(e) for e in line])
-    max_input_length = max([len(x) for x in data])
+        data.extend([int(e) for e in line] for line in csv_reader)
+    max_input_length = max(len(x) for x in data)
     data = [row + [pad_id] * (max_input_length - len(row)) for row in data]
     data = np.array(data, dtype='int32')
     if (verbose):

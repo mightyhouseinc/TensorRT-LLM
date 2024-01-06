@@ -90,20 +90,18 @@ def generate(
     if input_file is None:
         input_tokens.append(
             tokenizer.encode(input_text, add_special_tokens=False))
+    elif input_file.endswith('.csv'):
+        with open(input_file, 'r') as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            input_tokens.extend(np.array(line, dtype='int32') for line in csv_reader)
+    elif input_file.endswith('.npy'):
+        inputs = np.load(input_file)
+        for row in inputs:
+            row = row[row != END_ID]
+            input_tokens.append(row)
     else:
-        if input_file.endswith('.csv'):
-            with open(input_file, 'r') as csv_file:
-                csv_reader = csv.reader(csv_file, delimiter=',')
-                for line in csv_reader:
-                    input_tokens.append(np.array(line, dtype='int32'))
-        elif input_file.endswith('.npy'):
-            inputs = np.load(input_file)
-            for row in inputs:
-                row = row[row != END_ID]
-                input_tokens.append(row)
-        else:
-            print('Input file format not supported.')
-            raise SystemExit
+        print('Input file format not supported.')
+        raise SystemExit
 
     input_ids = None
     input_lengths = None

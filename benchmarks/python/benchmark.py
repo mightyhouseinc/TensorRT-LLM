@@ -271,7 +271,7 @@ def main(args):
 
     if args.serial_build and not args.build_only:
         raise Exception(
-            f"--serial_build must be used with --build_only, always need to parallel build to do inference in the same process"
+            "--serial_build must be used with --build_only, always need to parallel build to do inference in the same process"
         )
 
     if args.build_only and args.serial_build and args.rank is not None and args.world_size is not None:

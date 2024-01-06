@@ -34,7 +34,7 @@ def trt_dtype_to_onnx(dtype):
     elif dtype == trt.int32:
         return TensorProto.DataType.INT32
     else:
-        raise TypeError("%s is not supported" % dtype)
+        raise TypeError(f"{dtype} is not supported")
 
 
 def to_onnx(network, path):
@@ -150,19 +150,23 @@ def prepare_inputs(args):
             assertion(shape(input_ids, 0) == shape(k, 0), 'batch size')
             assertion(shape(k, 2) == shape(v, 2), 'kv cache len')
     else:
-        for i in range(args.n_layer):
-            past_key_value.append(
-                tensorrt_llm.Tensor(
-                    name=f'past_{i}',
-                    dtype=kv_dtype,
-                    shape=[2, -1, args.n_head, -1, head_size],
-                    dim_range=OrderedDict([
-                        ('2', [2, 2]), ('batch_size', [bs_range, bs_range]),
+        past_key_value.extend(
+            tensorrt_llm.Tensor(
+                name=f'past_{i}',
+                dtype=kv_dtype,
+                shape=[2, -1, args.n_head, -1, head_size],
+                dim_range=OrderedDict(
+                    [
+                        ('2', [2, 2]),
+                        ('batch_size', [bs_range, bs_range]),
                         ('num_heads', [args.n_head, args.n_head]),
                         ('past_key_len', [max_len_range, max_len_range]),
-                        ('head_size', [head_size, head_size])
-                    ]),
-                ))
+                        ('head_size', [head_size, head_size]),
+                    ]
+                ),
+            )
+            for i in range(args.n_layer)
+        )
         sequence_length = tensorrt_llm.Tensor(
             name='sequence_length',
             dtype=trt.int32,
@@ -223,13 +227,12 @@ if __name__ == '__main__':
 
         # Mark outputs
         lm_logits.mark_output('logits', kv_dtype)
-        if not args.use_gpt_attention_plugin:
-            for i, present in enumerate(presents):
+        for i, present in enumerate(presents):
+            if not args.use_gpt_attention_plugin:
                 k, v = present
                 k.mark_output(f'present_key_{i}', kv_dtype)
                 v.mark_output(f'present_value_{i}', kv_dtype)
-        else:
-            for i, present in enumerate(presents):
+            else:
                 present.mark_output(f'present_{i}', kv_dtype)
 
     model_path = os.path.join(args.output_dir, 'test.onnx')

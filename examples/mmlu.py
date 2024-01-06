@@ -171,26 +171,22 @@ def get_categories():
 
 def format_subject(subject):
     line = subject.split("_")
-    s = ""
-    for entry in line:
-        s += " " + entry
-    return s
+    return "".join(" " + entry for entry in line)
 
 
 def format_example(df, idx, include_answer=True):
     prompt = df.iloc[idx, 0]
     k = df.shape[1] - 2
     for j in range(k):
-        prompt += "\n{}. {}".format(get_choices()[j], df.iloc[idx, j + 1])
+        prompt += f"\n{get_choices()[j]}. {df.iloc[idx, j + 1]}"
     prompt += "\nAnswer:"
     if include_answer:
-        prompt += " {}\n\n".format(df.iloc[idx, k + 1])
+        prompt += f" {df.iloc[idx, k + 1]}\n\n"
     return prompt
 
 
 def gen_prompt(train_df, subject, k=-1):
-    prompt = "The following are multiple choice questions (with answers) about {}.\n\n".format(
-        format_subject(subject))
+    prompt = f"The following are multiple choice questions (with answers) about {format_subject(subject)}.\n\n"
     if k == -1:
         k = train_df.shape[0]
     for i in range(k):
@@ -351,8 +347,7 @@ def parse_args():
     parser.add_argument("--test_trt_llm", action="store_true")
     parser.add_argument("--test_hf", action="store_true")
 
-    args = parser.parse_args()
-    return args
+    return parser.parse_args()
 
 
 def main():

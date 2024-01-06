@@ -1027,8 +1027,11 @@ def get_allowed_models(benchmark_type=None):
     if benchmark_type is None:
         return set(_allowed_configs.keys())
     else:
-        return set(i.name for i in _allowed_configs.values()
-                   if i.benchmark_type == benchmark_type)
+        return {
+            i.name
+            for i in _allowed_configs.values()
+            if i.benchmark_type == benchmark_type
+        }
 
 
 def get_build_config(model_name):

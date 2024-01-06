@@ -31,7 +31,7 @@ def generate_output(engine: str,
     resources_dir = Path(__file__).parent.resolve().parent
     models_dir = resources_dir / 'models'
     hf_dir = models_dir / model
-    tp_pp_dir = 'tp' + str(tp_size) + '-pp' + str(pp_size) + '-gpu/'
+    tp_pp_dir = f'tp{str(tp_size)}-pp{str(pp_size)}-gpu/'
     engine_dir = models_dir / 'rt_engine' / model / engine / tp_pp_dir
 
     data_dir = resources_dir / 'data'
@@ -40,9 +40,9 @@ def generate_output(engine: str,
     if num_beams <= 1:
         output_dir = model_data_dir / 'sampling'
     else:
-        output_dir = model_data_dir / ('beam_search_' + str(num_beams))
+        output_dir = model_data_dir / f'beam_search_{str(num_beams)}'
 
-    output_name += '_tp' + str(tp_size) + '_pp' + str(pp_size)
+    output_name += f'_tp{str(tp_size)}' + '_pp' + str(pp_size)
 
     args = run.parse_arguments([
         '--engine_dir',

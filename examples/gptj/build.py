@@ -45,7 +45,7 @@ awq_gptj_config = None
 
 
 def get_engine_name(model, dtype, tp_size, rank):
-    return '{}_{}_tp{}_rank{}.engine'.format(model, dtype, tp_size, rank)
+    return f'{model}_{dtype}_tp{tp_size}_rank{rank}.engine'
 
 
 def serialize_engine(engine, path):
@@ -235,7 +235,7 @@ def parse_arguments(args):
     if not args.remove_input_padding:
         if args.use_gpt_attention_plugin:
             logger.warning(
-                f"It is recommended to specify --remove_input_padding when using GPT attention plugin"
+                "It is recommended to specify --remove_input_padding when using GPT attention plugin"
             )
 
     if args.model_dir is not None:
@@ -243,8 +243,7 @@ def parse_arguments(args):
         if args.use_weight_only and args.weight_only_precision == 'int4' and args.per_group:
             logger.info(f'Loading AWQ GPTJ model from {args.model_dir}...')
             global awq_gptj_config
-            with open(args.model_dir + "/config.json",
-                      encoding='utf-8') as config_file:
+            with open(f"{args.model_dir}/config.json", encoding='utf-8') as config_file:
                 awq_gptj_config = json.load(config_file)
                 args.n_embd = awq_gptj_config['n_embd']
                 args.n_head = awq_gptj_config['n_head']
@@ -255,9 +254,9 @@ def parse_arguments(args):
                     args.vocab_size = int(
                         (awq_gptj_config['vocab_size'] + 63) / 64) * 64
                     print(
-                        "vocab_size is {}, to use awq we pad it to {}.".format(
-                            awq_gptj_config['vocab_size'], args.vocab_size))
-            hf_gpt = torch.load(args.model_dir + "/gptj_quantized.pth")
+                        f"vocab_size is {awq_gptj_config['vocab_size']}, to use awq we pad it to {args.vocab_size}."
+                    )
+            hf_gpt = torch.load(f"{args.model_dir}/gptj_quantized.pth")
         else:
             logger.info(f'Loading HF GPTJ model from {args.model_dir}...')
             hf_gpt = AutoModelForCausalLM.from_pretrained(args.model_dir)
@@ -376,7 +375,9 @@ def build_rank_engine(builder: Builder,
                                       **quantize_kwargs)
 
     if args.model_dir is not None:
-        assert hf_gpt is not None, f'Could not load weights from hf_gpt model as it is not loaded yet.'
+        assert (
+            hf_gpt is not None
+        ), 'Could not load weights from hf_gpt model as it is not loaded yet.'
         if args.enable_fp8:
             gptj_scaling_factors = get_scaling_factors(
                 args.quantized_fp8_model_path, args.n_layer, args.quant_mode)
@@ -405,11 +406,11 @@ def build_rank_engine(builder: Builder,
         network.plugin_config.set_gpt_attention_plugin(
             dtype=args.use_gpt_attention_plugin)
     if args.use_gemm_plugin:
-        if not args.enable_fp8:
-            network.plugin_config.set_gemm_plugin(dtype=args.use_gemm_plugin)
-        else:
+        if args.enable_fp8:
             logger.info(
                 "Gemm plugin does not support FP8. Disabled Gemm plugin.")
+        else:
+            network.plugin_config.set_gemm_plugin(dtype=args.use_gemm_plugin)
     if args.use_layernorm_plugin:
         network.plugin_config.set_layernorm_plugin(
             dtype=args.use_layernorm_plugin)

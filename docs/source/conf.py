@@ -36,12 +36,10 @@ extensions = [
 ]
 
 myst_url_schemes = {
-    "http":
-    None,
-    "https":
-    None,
-    "source":
-    "https://github.com/NVIDIA/TensorRT-LLM/tree/" + branch_name + "/{{path}}",
+    "http": None,
+    "https": None,
+    "source": f"https://github.com/NVIDIA/TensorRT-LLM/tree/{branch_name}"
+    + "/{{path}}",
 }
 
 autosummary_generate = True
@@ -86,7 +84,7 @@ def gen_cpp_doc(ofile_name: str, header_dir: str, summary: str):
             ofile.write("   :project: TensorRT-LLM\n\n")
 
 
-runtime_summary = f"""
+runtime_summary = """
 Runtime
 ==========
 
@@ -96,5 +94,6 @@ Runtime
     """.strip()
 
 subprocess.run(['mkdir', '-p', CPP_GEN_DIR])
-gen_cpp_doc(CPP_GEN_DIR + '/runtime.rst', CPP_INCLUDE_DIR + '/runtime',
-            runtime_summary)
+gen_cpp_doc(
+    f'{CPP_GEN_DIR}/runtime.rst', f'{CPP_INCLUDE_DIR}/runtime', runtime_summary
+)

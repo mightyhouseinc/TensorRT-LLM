@@ -32,7 +32,7 @@ from weight import load_from_hf_bert, load_from_hf_qa_bert  # isort:skip
 
 
 def get_engine_name(model, dtype, tp_size, rank):
-    return '{}_{}_tp{}_rank{}.engine'.format(model, dtype, tp_size, rank)
+    return f'{model}_{dtype}_tp{tp_size}_rank{rank}.engine'
 
 
 def parse_arguments():

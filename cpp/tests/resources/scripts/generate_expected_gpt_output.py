@@ -29,7 +29,7 @@ def generate_output(engine: str,
     model = 'gpt2'
     resources_dir = Path(__file__).parent.resolve().parent
     models_dir = resources_dir / 'models'
-    tp_pp_dir = 'tp' + str(tp_size) + '-pp' + str(pp_size) + '-gpu/'
+    tp_pp_dir = f'tp{str(tp_size)}-pp{str(pp_size)}-gpu/'
     engine_dir = models_dir / 'rt_engine' / model / engine / tp_pp_dir
 
     data_dir = resources_dir / 'data'

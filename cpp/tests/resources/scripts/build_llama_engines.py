@@ -60,9 +60,7 @@ def build_engines(model_cache: str, only_multi_gpu: bool):
 
     engine_dir = models_dir / 'rt_engine' / model_name
 
-    tp_pp_sizes = [(1, 1)]
-    if only_multi_gpu:
-        tp_pp_sizes = [(1, 4), (4, 1), (2, 2)]
+    tp_pp_sizes = [(1, 4), (4, 1), (2, 2)] if only_multi_gpu else [(1, 1)]
     for tp_size, pp_size in tp_pp_sizes:
         tp_pp_dir = f"tp{tp_size}-pp{pp_size}-gpu"
         world_size = tp_size * pp_size

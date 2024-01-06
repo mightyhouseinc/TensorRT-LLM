@@ -34,9 +34,8 @@ from nmt.weight import parse_nmt_config, load_from_binary_nmt  # isort:skip
 
 def get_engine_name(model, dtype, tp_size, pp_size, rank):
     if pp_size == 1:
-        return '{}_{}_tp{}_rank{}.engine'.format(model, dtype, tp_size, rank)
-    return '{}_{}_tp{}_pp{}_rank{}.engine'.format(model, dtype, tp_size,
-                                                  pp_size, rank)
+        return f'{model}_{dtype}_tp{tp_size}_rank{rank}.engine'
+    return f'{model}_{dtype}_tp{tp_size}_pp{pp_size}_rank{rank}.engine'
 
 
 def serialize_engine(engine, path):
@@ -444,10 +443,7 @@ def build_rank_engine(builder: Builder,
                                      tensorrt_llm.str_dtype_to_trt(args.dtype))
         # ----------------------------------------------------------------
 
-    # Network -> Engine
-    engine = builder.build_engine(network, builder_config)
-
-    return engine
+    return builder.build_engine(network, builder_config)
 
 
 def build(rank, args):
@@ -519,7 +515,7 @@ def build(rank, args):
 
 
 def run_build(component):
-    assert component == 'encoder' or component == 'decoder', 'Unsupported component!'
+    assert component in ['encoder', 'decoder'], 'Unsupported component!'
     args = parse_arguments(component)
     args.component = component
 

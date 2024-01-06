@@ -43,10 +43,7 @@ def gen_suffix(rank, use_smooth_quant, quant_per_channel):
 
 def extract_layer_idx(name):
     ss = name.split('.')
-    for s in ss:
-        if s.isdigit():
-            return s
-    return None
+    return next((s for s in ss if s.isdigit()), None)
 
 
 def split(v, tp_size, idx, dim=0):
@@ -86,12 +83,12 @@ def parse_ft_config(ini_file):
                 f"in the config. The 'rotary_scaling_factor' will be ignored and "
                 f"rotary scaling will not be used.")
         rotary_scaling = None
+    elif rotary_scaling_factor is None:
+        raise ValueError(
+            f"'rotary_scaling_factor={rotary_scaling_factor}' was not found "
+            f"in ini config file {ini_file}, whereas 'rotary_scaling_type' is "
+            f"provided  and equals {repr(rotary_scaling_type)}.")
     else:
-        if rotary_scaling_factor is None:
-            raise ValueError(
-                f"'rotary_scaling_factor={rotary_scaling_factor}' was not found "
-                f"in ini config file {ini_file}, whereas 'rotary_scaling_type' is "
-                f"provided  and equals {repr(rotary_scaling_type)}.")
         rotary_scaling = [rotary_scaling_type, rotary_scaling_factor]
     rotary_pct = gpt_config.getfloat('gpt', 'rotary_pct', fallback=None)
     hidden_act = gpt_config.get('gpt', 'activation_function')
@@ -130,11 +127,8 @@ def parse_ft_config(ini_file):
 
 
 def check_embedding_share(dir_path):
-    share_embedding_table = False
-    lm_file = dir_path + '/' + 'model.lm_head.weight.bin'
-    if not Path(lm_file).exists():
-        share_embedding_table = True
-    return share_embedding_table
+    lm_file = f'{dir_path}/model.lm_head.weight.bin'
+    return not Path(lm_file).exists()
 
 
 def load_from_ft(tensorrt_llm_gpt: GPTLMHeadModel,

@@ -57,12 +57,16 @@ def lora_convert(out_dir, lora_config, lora_weights, customization_id):
         linear_in_weight = lora_weights[in_key]
         linear_out_weight = lora_weights[out_key]
 
-        save_val(torch_to_numpy(linear_in_weight.transpose(1, 0).contiguous()),
-                 saved_dir,
-                 in_key.replace("lora_kqv_adapter", f"lora_kqv_adapter.{0}"))
-        save_val(torch_to_numpy(linear_out_weight.transpose(1, 0).contiguous()),
-                 saved_dir,
-                 out_key.replace("lora_kqv_adapter", f"lora_kqv_adapter.{0}"))
+        save_val(
+            torch_to_numpy(linear_in_weight.transpose(1, 0).contiguous()),
+            saved_dir,
+            in_key.replace("lora_kqv_adapter", 'lora_kqv_adapter.0'),
+        )
+        save_val(
+            torch_to_numpy(linear_out_weight.transpose(1, 0).contiguous()),
+            saved_dir,
+            out_key.replace("lora_kqv_adapter", 'lora_kqv_adapter.0'),
+        )
 
         to_json_file(config, saved_dir / "lora_weights.json")
 

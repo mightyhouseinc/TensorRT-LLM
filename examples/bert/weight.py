@@ -18,10 +18,7 @@ import torch
 
 def extract_layer_idx(name):
     ss = name.split('.')
-    for s in ss:
-        if s.isdigit():
-            return s
-    return None
+    return next((s for s in ss if s.isdigit()), None)
 
 
 def split(v, tp_size, idx, dim=0):

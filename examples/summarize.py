@@ -119,8 +119,9 @@ def main(args):
                 max_attention_window_size=max_attention_window_size,
                 sink_token_length=sink_token_length)
         runner = runner_cls.from_dir(**runner_kwargs)
-        assert not (args.eval_ppl and not runner.gather_all_token_logits), \
-            "PPL evaluation requires engine built with gather_all_token_logits enabled"
+        assert (
+            not args.eval_ppl or runner.gather_all_token_logits
+        ), "PPL evaluation requires engine built with gather_all_token_logits enabled"
 
     if test_hf:
         profiler.start('load HF model')
@@ -364,7 +365,7 @@ def main(args):
         return output_lines_list, tokens_list, ppls
 
     if test_trt_llm:
-        datapoint = dataset[0:1]
+        datapoint = dataset[:1]
         output, *_ = eval_trt_llm(datapoint,
                                   eval_task=args.eval_task,
                                   eval_ppl=args.eval_ppl,
@@ -380,7 +381,7 @@ def main(args):
                 "---------------------------------------------------------")
 
     if test_hf:
-        datapoint = dataset[0:1]
+        datapoint = dataset[:1]
         output, *_ = eval_hf(datapoint,
                              eval_task=args.eval_task,
                              eval_ppl=args.eval_ppl,

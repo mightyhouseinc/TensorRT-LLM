@@ -110,7 +110,7 @@ def capture_activation_range(model,
 
     hooks = []
     for name, m in model.named_modules():
-        if isinstance(m, nn.Linear) or isinstance(m, Conv1D):
+        if isinstance(m, (nn.Linear, Conv1D)):
             hooks.append(
                 m.register_forward_hook(
                     functools.partial(stat_input_hook, name=name)))
@@ -249,9 +249,7 @@ def parse_arguments():
         default=1,
         help='The number of workers to convert checkpoint in parallel')
     parser.add_argument('--log_level', type=str, default='info')
-    args = parser.parse_args()
-
-    return args
+    return parser.parse_args()
 
 
 def generate_int8(weights, act_range, is_qkv=False, multi_query_mode=False):
@@ -288,11 +286,11 @@ def generate_int8(weights, act_range, is_qkv=False, multi_query_mode=False):
         scale_w_orig_quant_c = 127. / act_range["w"].reshape(3,
                                                              -1).cpu().numpy()
 
-    elif is_qkv and multi_query_mode:
+    elif is_qkv:
         hidden_dim = weights.shape[0]
         local_dim = act_range["w"].shape[0]
         kv_dim = (local_dim - hidden_dim) // 2
-        scale_w_q = act_range["w"][0:hidden_dim]
+        scale_w_q = act_range["w"][:hidden_dim]
         scale_w_k = act_range["w"][hidden_dim:hidden_dim + kv_dim]
         scale_w_v = act_range["w"][-kv_dim:]
 
@@ -347,15 +345,13 @@ def generate_int8(weights, act_range, is_qkv=False, multi_query_mode=False):
                                     kv_dim] = scale_w_quant_orig_t[1]
         scale_w_quant_orig_t_expand[-kv_dim:] = scale_w_quant_orig_t[2]
         weight_int8 = to_i8(weights * scale_w_quant_orig_t_expand)
-        weight_int8_col = to_i8(weights * scale_w_orig_quant_c)
-    elif is_qkv and not multi_query_mode:
+    elif is_qkv:
         hidden_dim = weights.shape[0]
         weight_int8 = to_i8(weights * scale_w_orig_quant_t)
         weight_int8 = weight_int8
-        weight_int8_col = to_i8(weights * scale_w_orig_quant_c)
     else:
         weight_int8 = to_i8(weights * scale_w_orig_quant_t)
-        weight_int8_col = to_i8(weights * scale_w_orig_quant_c)
+    weight_int8_col = to_i8(weights * scale_w_orig_quant_c)
     return {
         "weight.int8": weight_int8,
         "weight.int8.col": weight_int8_col,
@@ -398,9 +394,7 @@ def reorder_qkv_weight_or_bias(v, n_head, n_hidden, is_bias=False):
     # permute to (3, num_heads, head_dim, ...)
     v = v.transpose(0, 1)
     # final shape: weight=(3, hidden, hidden) or bias=(3, hidden)
-    if is_bias:
-        return v.reshape(3, n_hidden)
-    return v.reshape(3, n_hidden, n_hidden)
+    return v.reshape(3, n_hidden) if is_bias else v.reshape(3, n_hidden, n_hidden)
 
 
 def split_qkv_tp(v, n_head, n_hidden, tensor_parallel, rank):
@@ -428,11 +422,11 @@ def split_matrix_tp(v, tensor_parallel, rank, dim):
 
 
 def get_weight(config, prefix, dtype):
-    return config[prefix + '.weight'].to(dtype).detach()
+    return config[f'{prefix}.weight'].to(dtype).detach()
 
 
 def get_bias(config, prefix, dtype):
-    return config[prefix + '.bias'].to(dtype).detach()
+    return config[f'{prefix}.bias'].to(dtype).detach()
 
 
 def get_weight_and_bias(config, prefix, dtype):
@@ -450,13 +444,13 @@ def get_tllm_linear_weight(weight,
         processed_torch_weights, torch_weight_scales = \
             torch.ops.fastertransformer.symmetric_quantize_last_axis_of_batched_matrix(
                 v, plugin_weight_only_quant_type)
-        results[prefix + 'weight'] = processed_torch_weights
-        results[prefix + 'per_channel_scale'] = torch_weight_scales
+        results[f'{prefix}weight'] = processed_torch_weights
+        results[f'{prefix}per_channel_scale'] = torch_weight_scales
     else:
-        results[prefix + 'weight'] = weight.contiguous()
+        results[f'{prefix}weight'] = weight.contiguous()
 
     if bias is not None:
-        results[prefix + 'bias'] = bias
+        results[f'{prefix}bias'] = bias
 
     return results
 
@@ -498,7 +492,7 @@ def smooth_bloom_model(model, scales, alpha, bloom_qkv_param, bloom_smoother):
         param = module.self_attention.query_key_value.weight
         param = reorder_torch_qkv_weight_or_bias(param, model, is_bias=False)
 
-        layer_name = name + ".self_attention.query_key_value"
+        layer_name = f"{name}.self_attention.query_key_value"
         act_range_qkv = scales.get(layer_name)
         # (n_head x 3 x head_dim) -> (3 x n_head x head_dim)
         act_range_qkv['w'] = reorder_torch_qkv_weight_or_bias(
@@ -517,7 +511,7 @@ def smooth_bloom_model(model, scales, alpha, bloom_qkv_param, bloom_smoother):
 
         # dense
         # enabled for better accuracy with perf overhead of quantiztion
-        layer_name = name + ".self_attention.dense"
+        layer_name = f"{name}.self_attention.dense"
         smoother = smooth_gemm(module.self_attention.dense.weight,
                                scales[layer_name]["x"], None, None, alpha)
         bloom_smoother[layer_name] = smoother
@@ -527,7 +521,7 @@ def smooth_bloom_model(model, scales, alpha, bloom_qkv_param, bloom_smoother):
             dim=1)[0]
 
         # fc1
-        layer_name = name + ".mlp.dense_h_to_4h"
+        layer_name = f"{name}.mlp.dense_h_to_4h"
         smoother = smooth_gemm(module.mlp.dense_h_to_4h.weight,
                                scales[layer_name]["x"],
                                module.post_attention_layernorm.weight,
@@ -538,7 +532,7 @@ def smooth_bloom_model(model, scales, alpha, bloom_qkv_param, bloom_smoother):
 
         # fc2
         # enabled for better accuracy with perf overhead of quantiztion
-        layer_name = name + ".mlp.dense_4h_to_h"
+        layer_name = f"{name}.mlp.dense_4h_to_h"
         smoother = smooth_gemm(module.mlp.dense_4h_to_h.weight,
                                scales[layer_name]["x"], None, None, alpha)
         bloom_smoother[layer_name] = smoother
@@ -562,10 +556,9 @@ def get_tllm_linear_sq_weight(
     rank=0,
     cat_dim=0,
 ):
-    results = {}
-
     col_shape = shape if (is_qkv or per_channel) else [1, 1]
 
+    results = {}
     if per_token:
 
         original_weights = vals["weight.int8.col"]
@@ -574,8 +567,7 @@ def get_tllm_linear_sq_weight(
         if is_qkv:
             hidden_dim = cur_weights.shape[0]
             cur_weights = cur_weights.reshape(hidden_dim, -1)
-        results[prefix +
-                'weight'] = torch.from_numpy(cur_weights).t().contiguous()
+        results[f'{prefix}weight'] = torch.from_numpy(cur_weights).t().contiguous()
         if smoother_value is None:
             results[last_prefix] = torch.from_numpy(
                 np.array([1.0], dtype=np.float32))
@@ -586,9 +578,11 @@ def get_tllm_linear_sq_weight(
                                              axis=cat_dim)[rank]
         else:
             cur_per_channel_value = vals["scale_w_quant_orig.col"]
-        results[prefix + 'per_channel_scale'] = torch.from_numpy(
-            np.array(cur_per_channel_value,
-                     dtype=np.float32).reshape(col_shape)).contiguous()
+        results[f'{prefix}per_channel_scale'] = torch.from_numpy(
+            np.array(cur_per_channel_value, dtype=np.float32).reshape(
+                col_shape
+            )
+        ).contiguous()
     else:
         original_weights = np.array(vals["weight.int8"])
         cur_weights = np.split(original_weights, tensor_parallel,
@@ -597,32 +591,36 @@ def get_tllm_linear_sq_weight(
         if is_qkv:
             hidden_dim = cur_weights.shape[0]
             cur_weights = cur_weights.reshape(hidden_dim, -1)
-        results[prefix +
-                'weight'] = torch.from_numpy(cur_weights).t().contiguous()
+        results[f'{prefix}weight'] = torch.from_numpy(cur_weights).t().contiguous()
 
         cur_per_channel_value = vals["scale_y_accum_quant"]
 
-        results[prefix + 'per_channel_scale'] = torch.from_numpy(
-            np.array([cur_per_channel_value],
-                     dtype=np.float32).reshape(col_shape)).contiguous()
+        results[f'{prefix}per_channel_scale'] = torch.from_numpy(
+            np.array([cur_per_channel_value], dtype=np.float32).reshape(
+                col_shape
+            )
+        ).contiguous()
 
         results[last_prefix] = torch.from_numpy(
             np.array([vals['scale_x_orig_quant']],
                      dtype=np.float32)).contiguous()
 
-        results[prefix + 'act_scale'] = torch.from_numpy(
-            np.array([[vals["scale_y_quant_orig"]]],
-                     dtype=np.float32)).contiguous()
+        results[f'{prefix}act_scale'] = torch.from_numpy(
+            np.array([[vals["scale_y_quant_orig"]]], dtype=np.float32)
+        ).contiguous()
 
     if smoother_value is not None:
         cur_smoother_value = np.split(smoother_value,
                                       tensor_parallel,
                                       axis=cat_dim)[rank]
-        results[prefix + 'smoother'] = cur_smoother_value.reshape(
-            smoother_shape).contiguous().to(torch.float32)
+        results[f'{prefix}smoother'] = (
+            cur_smoother_value.reshape(smoother_shape)
+            .contiguous()
+            .to(torch.float32)
+        )
 
     if bias is not None:
-        results[prefix + 'bias'] = bias
+        results[f'{prefix}bias'] = bias
 
     return results
 
